@@ -11,7 +11,7 @@ puts:
     push si
     push ax
 
-.loop
+.loop:
     lodsb
     or al, al
     jz .done
@@ -22,7 +22,7 @@ puts:
 
     jmp .loop
 
-.done
+.done:
     pop ax
     pop si
     ret
