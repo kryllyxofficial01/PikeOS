@@ -37,18 +37,18 @@ puts:
     push si
     push ax
 
-.loop:
+loop:
     lodsb
     or al, al
-    jz .done
+    jz done
 
     mov ah, 0x0e
     mov bh, 0
     int 0x10
 
-    jmp .loop
+    jmp loop
 
-.done:
+done:
     pop ax
     pop si
     ret
@@ -69,8 +69,8 @@ main:
 
     hlt
 
-.halt:
-    jmp .halt
+halt:
+    jmp halt
 
 message: db "test", ENDL, 0
 
