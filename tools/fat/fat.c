@@ -39,8 +39,8 @@ typedef struct {
     uint16_t creationTime;
     uint16_t creationDate;
     uint16_t accessedDate;
-    uint16_t clusterHigh16Bits;
-    uint16_t clusterLow16Bits;
+    uint16_t highClusterBits; // First 16 bits of the cluster
+    uint16_t lowClusterBits; // Last 16 bits of the cluster
     uint16_t modificationTime;
     uint16_t modificationDate;
     uint32_t size;
