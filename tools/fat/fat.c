@@ -2,13 +2,14 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <ctype.h>
 
 typedef uint8_t bool;
 #define true 1
 #define false 0
 
 typedef struct {
-    uint8_t boot_jump[3];
+    uint8_t bootJump[3];
     uint8_t OEM[8];
     uint16_t sectorBytes;
     uint8_t clusterSectors;
@@ -39,8 +40,8 @@ typedef struct {
     uint16_t creationTime;
     uint16_t creationDate;
     uint16_t accessedDate;
-    uint16_t highClusterBits; // First 16 bits of the cluster
-    uint16_t lowClusterBits; // Last 16 bits of the cluster
+    uint16_t firstClusterLow;
+    uint16_t firstClusterHigh;
     uint16_t modificationTime;
     uint16_t modificationDate;
     uint32_t size;
@@ -49,6 +50,7 @@ typedef struct {
 BootSector bootSector;
 uint8_t* FAT = NULL;
 DirectoryEntry* rootDirectory = NULL;
+uint32_t rootDirectoryEnd;
 
 bool readSector(FILE* disk) {
     return fread(&bootSector, sizeof(bootSector), 1, disk) > 0;
@@ -72,8 +74,30 @@ bool readRootDir(FILE* disk) {
     uint32_t sectors = size / bootSector.sectorBytes;
     sectors += sectors % bootSector.sectorBytes > 0 ? 1 : 0;
 
+    rootDirectoryEnd = lba + sectors;
     rootDirectory = (DirectoryEntry*) malloc(sectors*bootSector.sectorBytes);
     return readSectors(disk, lba, sectors, rootDirectory);
+}
+
+bool readFile(DirectoryEntry* fileEntry, FILE* disk, uint8_t* outputBuffer) {
+    uint16_t currentCluster = fileEntry->firstClusterLow;
+    bool ok = true;
+
+    do {
+        uint32_t lba = rootDirectoryEnd + (currentCluster-2) * bootSector.clusterSectors;
+        ok = ok && readSectors(disk, lba, bootSector.clusterSectors, outputBuffer);
+        outputBuffer += bootSector.clusterSectors * bootSector.sectorBytes;
+
+        uint32_t FAT_index = currentCluster*3 / 2;
+        if (currentCluster % 2 == 0) {
+            currentCluster = (*(uint16_t*)(FAT + FAT_index)) & 0x0fff;
+        }
+        else {
+            currentCluster = (*(uint16_t*)(FAT + FAT_index)) >> 4;
+        }
+    } while (ok && currentCluster >= 0x0ff8);
+
+    return ok;
 }
 
 DirectoryEntry* findFile(const char* name) {
@@ -125,7 +149,17 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+    uint8_t* buffer = (uint8_t*) malloc(fileEntry->size + bootSector.sectorBytes);
+    if (!readFile(fileEntry, disk, buffer)) {
+        fprintf(stderr, "Could not read from '%s'\n", argv[2]);
+        free(FAT);
+        free(rootDirectory);
+        free(buffer);
+        return -1;
+    }
+
     free(FAT);
     free(rootDirectory);
+    free(buffer);
     return 0;
 }
