@@ -9,7 +9,7 @@ nop
 ; Headers required by the FAT12 filesystem
 oem: db "MSWIN4.1"
 sector_bytes: dw 512
-sector_clusters: db 1
+cluster_sectors: db 1
 reserved_sectors: dw 1
 fat_count: db 2
 dir_entries: dw 0e0h
