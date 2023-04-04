@@ -1,8 +1,15 @@
 ASM=nasm
+CC=gcc
+
 SRC=src
 BUILD=build
+TOOLS=tools
 
-.PHONY: all floppy kernel bootloader clean mkbuild
+CCFLAGS=-g
+
+.PHONY: all floppy kernel bootloader clean mkbuild fat
+
+all: floppy fat
 
 # Create floppy image
 floppy: $(BUILD)/floppy.img
@@ -11,6 +18,7 @@ $(BUILD)/floppy.img: bootloader kernel
 	mkfs.fat -F 12 -n "PikeOS" $(BUILD)/floppy.img
 	dd if=$(BUILD)/bootloader.bin of=$(BUILD)/floppy.img conv=notrunc
 	mcopy -i $(BUILD)/floppy.img $(BUILD)/kernel.bin "::kernel.bin"
+	mcopy -i $(BUILD)/floppy.img $(TOOLS)/fat/test.txt "::test.txt"
 
 # Run the bootloader
 bootloader: $(BUILD)/bootloader.bin
@@ -21,6 +29,12 @@ $(BUILD)/bootloader.bin: mkbuild
 kernel: $(BUILD)/kernel.bin
 $(BUILD)/kernel.bin: mkbuild
 	$(ASM) $(SRC)/kernel/main.asm -f bin -o $(BUILD)/kernel.bin
+
+# Tools
+fat: $(BUILD)/tools/fat
+$(BUILD)/tools/fat: mkbuild $(TOOLS)/fat/fat.c
+	mkdir -p $(BUILD)/tools
+	$(CC) $(CCFLAGS) -o $(BUILD)/tools/fat $(TOOLS)/fat/fat.c
 
 # Create the the build directory
 mkbuild:
