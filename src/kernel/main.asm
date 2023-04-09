@@ -1,52 +1,37 @@
-org 0x7c00 ; Tells the assembler where the program should be
-bits 16 ; Tells the assembler to emit 16-bit code
+org 0x0
+bits 16
 
 %define ENDL 0x0D, 0x0A
 
 start:
-    jmp main
+    mov si, msg
+    call puts
 
-; Save the register values before they're modified
+.halt:
+    cli
+    hlt
+
 puts:
     push si
     push ax
+    push bx
 
-loop:
+.loop:
     lodsb
     or al, al
-    jz done
+    jz .done
 
     mov ah, 0x0e
     mov bh, 0
     int 0x10
 
-    jmp loop
+    jmp .loop
 
-done:
+.done:
+    pop bx
     pop ax
     pop si
+
     ret
 
-main:
-    ; Setup data segments
-    mov ax, 0
-    mov ds, ax
-    mov es, ax
-
-    ; Setup stack
-    mov ss, ax
-    mov sp, 0x7c00
-
-    ; Print message
-    mov si, message
-    call puts
-
-    hlt
-
-halt:
-    jmp halt
-
-message: db "test", ENDL, 0
-
-times 510-($-$$) db 0 ; Pad the program with zeros so it creates a 512 byte sector
-dw 0aa55h ; BIOS signature
+msg: db 'test', ENDL, 0

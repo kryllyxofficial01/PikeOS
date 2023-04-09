@@ -1,22 +1,22 @@
 org 0x7c00 ; Tells the assembler where the program should be
 bits 16 ; Tells the assembler to emit 16-bit code
 
-%define ENDL 0x0D, 0x0A
+%define ENDL 0x0d, 0x0a
 
 jmp short start
 nop
 
 ; Headers required by the FAT12 filesystem
-oem: db "MSWIN4.1"
-sector_bytes: dw 512
-cluster_sectors: db 1
+oem: db 'MSWIN4.1'
+bytes_per_sector: dw 512
+sectors_per_cluster: db 1
 reserved_sectors: dw 1
 fat_count: db 2
 dir_entries: dw 0e0h
 sectors: dw 2880
-descriptor_type: db 0f0h
+media_descriptor_type: db 0f0h
 fat_sectors: dw 9
-track_sectors: dw 18
+sectors_per_track: dw 18
 heads: dw 2
 hidden_sectors: dd 0
 large_sectors: dd 0
@@ -25,12 +25,164 @@ large_sectors: dd 0
 drive_number: db 0
 db 0
 signature: db 29h
-volume_id: db 12h, 34h, 56h 78h
-volume_label: db " PikeOS "
-system_id: db " FAT12 "
+volume_id: db 12h, 34h, 56h, 78h
+volume_label: db 'PIKE     OS'
+system_id: db 'FAT12   '
 
 start:
-    jmp main
+    mov ax, 0
+    mov ds, ax
+    mov es, ax
+
+    mov ss, ax
+    mov sp, 0x7c00
+
+    push es
+    push word .after
+    retf
+
+.after:
+    mov [drive_number], dl
+
+    mov si, loading
+    call puts
+
+    push es
+    mov ah, 08h
+    int 13h
+    jc floppy_error
+    pop es
+
+    and cl, 0x3f
+    xor ch, ch
+    mov [sectors_per_track], cx
+
+    inc dh
+    mov [heads], dh
+
+    mov ax, [fat_sectors]
+    mov bl, [fat_count]
+    xor bh, bh
+    mul bx
+    add ax, [reserved_sectors]
+    push ax
+
+    mov ax, [dir_entries]
+    shl ax, 5
+    xor dx, dx
+    div word [bytes_per_sector]
+
+    test dx, dx
+    jz .root_dir
+    inc ax
+
+.root_dir:
+    mov cl, al
+    pop ax
+    mov dl, [drive_number]
+    mov bx, buffer
+    call disk_read
+
+    xor bx, bx
+    mov di, buffer
+
+.search_for_kernel:
+    mov si, kernel_bin
+    mov cx, 11
+    push di
+    repe cmpsb
+    pop di
+    je .kernel_found
+
+    add di, 32
+    inc bx
+    cmp bx, [dir_entries]
+    jl .search_for_kernel
+
+    jmp kernel_not_found_error
+
+.kernel_found:
+    mov ax, [di + 26]
+    mov [kernel_cluster], ax
+
+    mov ax, [reserved_sectors]
+    mov bx, buffer
+    mov cl, [fat_sectors]
+    mov dl, [drive_number]
+    call disk_read
+
+    mov bx, KERNEL_LOAD_SEGMENT
+    mov es, bx
+    mov bx, KERNEL_LOAD_OFFSET
+
+.kernel_load_loop:
+    mov ax, [kernel_cluster]
+    mov ax, 31 ; WHY IS THIS HARDCODED!!!!!
+
+    mov cl, 1
+    mov dl, [drive_number]
+    call disk_read
+
+    add bx, [bytes_per_sector]
+
+    mov ax, [kernel_cluster]
+    mov cx, 3
+    mul cx
+    mov cx, 2
+    div cx
+
+    mov si, buffer
+    add si, ax
+    mov ax, [ds:si]
+
+    or dx, dx
+    jz .even
+
+.odd:
+    shr ax, 4
+    jmp .next_cluster
+
+.even:
+    and ax, 0x0fff
+
+.next_cluster:
+    cmp ax, 0x0ff8
+    jae .read_finished
+
+    mov [kernel_cluster], ax
+    jmp .kernel_load_loop
+
+.read_finished:
+    mov dl, [drive_number]
+
+    mov ax, KERNEL_LOAD_SEGMENT
+    mov ds, ax
+    mov es, ax
+
+    jmp KERNEL_LOAD_SEGMENT:KERNEL_LOAD_OFFSET
+    jmp wait_to_reboot
+
+    cli
+    hlt
+
+floppy_error:
+    mov si, read_failed
+    call puts
+    jmp wait_to_reboot
+
+kernel_not_found_error:
+    mov si, kernel_not_found
+    call puts
+    jmp wait_to_reboot
+
+wait_to_reboot:
+    mov ah, 0
+    int 16h
+    jmp 0ffffh:0
+
+.halt:
+    cli
+    hlt
 
 puts:
     push si
@@ -48,7 +200,6 @@ puts:
 
     jmp .loop
 
-
 .done:
     pop bx
     pop ax
@@ -56,46 +207,12 @@ puts:
 
     ret
 
-main:
-    mov ax, 0
-    mov ds, ax
-    mov es, ax
-
-    mov ss, ax
-    mov sp, 0x7c00
-
-    mov [drive_number], dl
-    mov ax, 1
-    mov cl, 1
-    mov bx, 0x7e00
-    call read_from_disk
-
-    mov si, message
-    call puts
-
-    cli
-    hlt
-
-disk_read_failed:
-    mov si, floppy_error
-    call puts
-    jmp wait_to_reboot
-
-wait_to_reboot:
-    mov ah, 0
-    int 16h
-    jmp 0ffffh:0
-
-.halt:
-    cli
-    hlt
-
 lba_to_chs:
     push ax
     push dx
 
     xor dx, dx
-    div word [track_sectors]
+    div word [sectors_per_track]
 
     inc dx
     mov cx, dx
@@ -103,7 +220,7 @@ lba_to_chs:
     xor dx, dx
     div word [heads]
 
-    mov dh, al
+    mov dh, dl
     mov ch, al
     shl ah, 6
     or cl, ah
@@ -114,7 +231,7 @@ lba_to_chs:
 
     ret
 
-read_from_disk:
+disk_read:
     push ax
     push bx
     push cx
@@ -135,14 +252,14 @@ read_from_disk:
     jnc .done
 
     popa
-    call reset_disk
+    call disk_reset
 
     dec di
     test di, di
     jnz .retry
 
 .fail:
-    jmp disk_read_failed
+    jmp floppy_error
 
 .done:
     popa
@@ -155,18 +272,27 @@ read_from_disk:
 
     ret
 
-reset_disk:
+disk_reset:
     pusha
+
     mov ah, 0
     stc
     int 13h
-    jc disk_read_failed
-    popa
+    jc floppy_error
 
+    popa
     ret
 
-message: db "test", ENDL, 0
-floppy_error: db "Failed to read from disk", ENDL, 0
+loading: db 'Loading...', ENDL, 0
+read_failed: db 'Failed to read from disk', ENDL, 0
+kernel_not_found: db 'Could not find kernel', ENDL, 0
+kernel_bin: db 'KERNEL  BIN'
+kernel_cluster: dw 0
+
+KERNEL_LOAD_SEGMENT equ 0x2000
+KERNEL_LOAD_OFFSET equ 0
 
 times 510-($-$$) db 0 ; Pad the program with zeros so it creates a 512 byte sector
 dw 0x0aa55 ; BIOS signature
+
+buffer:

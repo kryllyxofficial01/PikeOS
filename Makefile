@@ -7,9 +7,9 @@ TOOLS=tools
 
 CCFLAGS=-g
 
-.PHONY: all floppy kernel bootloader clean mkbuild fat
+.PHONY: all floppy kernel bootloader clean mkbuild
 
-all: floppy fat
+all: floppy
 
 # Create floppy image
 floppy: $(BUILD)/floppy.img
@@ -18,7 +18,7 @@ $(BUILD)/floppy.img: bootloader kernel
 	mkfs.fat -F 12 -n "PikeOS" $(BUILD)/floppy.img
 	dd if=$(BUILD)/bootloader.bin of=$(BUILD)/floppy.img conv=notrunc
 	mcopy -i $(BUILD)/floppy.img $(BUILD)/kernel.bin "::kernel.bin"
-	mcopy -i $(BUILD)/floppy.img $(TOOLS)/fat/test.txt "::test.txt"
+#	mcopy -i $(BUILD)/floppy.img $(TOOLS)/fat/test.txt "::test.txt"
 
 # Run the bootloader
 bootloader: $(BUILD)/bootloader.bin
