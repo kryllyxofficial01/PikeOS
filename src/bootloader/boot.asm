@@ -1,32 +1,30 @@
-org 0x7c00 ; Tells the assembler where the program should be
-bits 16 ; Tells the assembler to emit 16-bit code
+org 0x7c00
+bits 16
 
 %define ENDL 0x0d, 0x0a
 
 jmp short start
 nop
 
-; Headers required by the FAT12 filesystem
 oem: db 'MSWIN4.1'
 bytes_per_sector: dw 512
 sectors_per_cluster: db 1
 reserved_sectors: dw 1
 fat_count: db 2
 dir_entries: dw 0e0h
-sectors: dw 2880
+total_sectors: dw 2880
 media_descriptor_type: db 0f0h
-fat_sectors: dw 9
+sectors_per_fat: dw 9
 sectors_per_track: dw 18
 heads: dw 2
 hidden_sectors: dd 0
 large_sectors: dd 0
 
-; Extended boot records
 drive_number: db 0
 db 0
 signature: db 29h
 volume_id: db 12h, 34h, 56h, 78h
-volume_label: db 'PIKE     OS'
+volume_label: db 'PIKE    OS'
 system_id: db 'FAT12   '
 
 start:
@@ -60,7 +58,7 @@ start:
     inc dh
     mov [heads], dh
 
-    mov ax, [fat_sectors]
+    mov ax, [sectors_per_fat]
     mov bl, [fat_count]
     xor bh, bh
     mul bx
@@ -73,10 +71,10 @@ start:
     div word [bytes_per_sector]
 
     test dx, dx
-    jz .root_dir
+    jz .root_dir_after
     inc ax
 
-.root_dir:
+.root_dir_after:
     mov cl, al
     pop ax
     mov dl, [drive_number]
@@ -86,28 +84,28 @@ start:
     xor bx, bx
     mov di, buffer
 
-.search_for_kernel:
+.search_kernel:
     mov si, kernel_bin
     mov cx, 11
     push di
     repe cmpsb
     pop di
-    je .kernel_found
+    je .found_kernel
 
     add di, 32
     inc bx
     cmp bx, [dir_entries]
-    jl .search_for_kernel
+    jl .search_kernel
 
     jmp kernel_not_found_error
 
-.kernel_found:
+.found_kernel:
     mov ax, [di + 26]
     mov [kernel_cluster], ax
 
     mov ax, [reserved_sectors]
     mov bx, buffer
-    mov cl, [fat_sectors]
+    mov cl, [sectors_per_fat]
     mov dl, [drive_number]
     call disk_read
 
@@ -115,10 +113,10 @@ start:
     mov es, bx
     mov bx, KERNEL_LOAD_OFFSET
 
-.kernel_load_loop:
+.load_kernel_loop:
     mov ax, [kernel_cluster]
-    mov ax, 31 ; WHY IS THIS HARDCODED!!!!!
 
+    add ax, 31 ; why tf is this hardcoded
     mov cl, 1
     mov dl, [drive_number]
     call disk_read
@@ -143,14 +141,14 @@ start:
     jmp .next_cluster
 
 .even:
-    and ax, 0x0fff
+    and ax, 0x0FFF
 
 .next_cluster:
     cmp ax, 0x0ff8
     jae .read_finished
 
     mov [kernel_cluster], ax
-    jmp .kernel_load_loop
+    jmp .load_kernel_loop
 
 .read_finished:
     mov dl, [drive_number]
@@ -160,6 +158,7 @@ start:
     mov es, ax
 
     jmp KERNEL_LOAD_SEGMENT:KERNEL_LOAD_OFFSET
+
     jmp wait_to_reboot
 
     cli
@@ -228,7 +227,6 @@ lba_to_chs:
     pop ax
     mov dl, al
     pop ax
-
     ret
 
 disk_read:
@@ -285,14 +283,14 @@ disk_reset:
 
 loading: db 'Loading...', ENDL, 0
 read_failed: db 'Failed to read from disk', ENDL, 0
-kernel_not_found: db 'Could not find kernel', ENDL, 0
+kernel_not_found: db 'Kernel not found', ENDL, 0
 kernel_bin: db 'KERNEL  BIN'
 kernel_cluster: dw 0
 
 KERNEL_LOAD_SEGMENT equ 0x2000
 KERNEL_LOAD_OFFSET equ 0
 
-times 510-($-$$) db 0 ; Pad the program with zeros so it creates a 512 byte sector
-dw 0x0aa55 ; BIOS signature
+times 510-($-$$) db 0
+dw 0aa55h
 
 buffer:
