@@ -4,7 +4,6 @@ LD=/usr/bin/watcom/binl/wlink
 
 SRC=src
 BUILD=build
-TOOLS=tools
 
 .PHONY: all floppy kernel bootloader clean mkbuild
 
@@ -44,8 +43,3 @@ clean:
 	$(MAKE) -C $(SRC)/bootloader/stage2 BUILD_DIR=$(abspath $(BUILD)) clean
 	$(MAKE) -C $(SRC)/kernel BUILD_DIR=$(abspath $(BUILD)) clean
 	rm -rf $(BUILD)/*
-
-# fat: $(BUILD)/tools/fat
-# $(BUILD)/tools/fat: mkbuild $(TOOLS)/fat/fat.c
-# 	mkdir -p $(BUILD)/tools
-# 	gcc -g -o $(BUILD)/tools/fat $(TOOLS)/fat/fat.c
