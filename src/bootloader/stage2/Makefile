@@ -1,11 +1,11 @@
 ASM?=nasm
 WCC?=/usr/bin/watcom/binl/wcc
-LD?=/usr/bin/watcom/binl/wlink
+LINKER?=/usr/bin/watcom/binl/wlink
 
 ASM_FLAGS=-f obj
 WCC_FLAGS=-4 -d3 -s -wx -ms -zl -zq
 
-BUILD?=../../../build
+BUILD?=build/
 
 C_SOURCES=$(wildcard *.c)
 C_OBJECTS=$(patsubst %.c, $(BUILD)/stage2/c/%.obj, $(C_SOURCES))
@@ -18,7 +18,7 @@ all: stage2
 
 stage2: $(BUILD)/stage2.bin $(ASM_OBJECTS) $(C_OBJECTS)
 $(BUILD)/stage2.bin:
-	$(LD) NAME $(BUILD)/stage2.bin FILE \{$(ASM_OBJECTS) $(C_OBJECTS)\} OPTION MAP=$(BUILD)/stage2.map @linker.lnk
+	$(LINKER) NAME $(BUILD)/stage2.bin FILE \{$(ASM_OBJECTS) $(C_OBJECTS)\} OPTION MAP=$(BUILD)/stage2.map @linker.lnk
 
 $(BUILD)/stage2/c/%.obj: %.c mkbuild
 	$(WCC) -fo=$@ $<

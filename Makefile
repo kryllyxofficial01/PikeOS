@@ -23,16 +23,16 @@ bootloader: stage1 stage2
 
 stage1: $(BUILD)/stage1.bin
 $(BUILD)/stage1.bin: mkbuild
-	$(MAKE) -C $(SRC)/bootloader/stage1 BUILD_DIR=$(abspath $(BUILD))
+	$(MAKE) -C $(SRC)/bootloader/stage1 BUILD=$(abspath $(BUILD))
 
 stage2: $(BUILD)/stage2.bin
 $(BUILD)/stage2.bin: mkbuild
-	$(MAKE) -C $(SRC)/bootloader/stage2 BUILD_DIR=$(abspath $(BUILD))
+	$(MAKE) -C $(SRC)/bootloader/stage2 BUILD=$(abspath $(BUILD))
 
 # Kernel
 kernel: $(BUILD)/kernel.bin
 $(BUILD)/kernel.bin: mkbuild
-	$(MAKE) -C $(SRC)/kernel BUILD_DIR=$(abspath $(BUILD))
+	$(MAKE) -C $(SRC)/kernel BUILD=$(abspath $(BUILD))
 
 # Misc.
 mkbuild:
