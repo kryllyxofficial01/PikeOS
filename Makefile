@@ -28,7 +28,7 @@ $(BUILD)/bootloader.bin: mkbuild
 # Start the kernel
 kernel: $(BUILD)/kernel.bin
 $(BUILD)/kernel.bin: mkbuild
-	$(ASM) $(SRC)/kernel/main.asm -f bin -o $(BUILD)/kernel.bin
+	$(ASM) $(SRC)/kernel/kernel.asm -f bin -o $(BUILD)/kernel.bin
 
 # Tools
 fat: $(BUILD)/tools/fat
