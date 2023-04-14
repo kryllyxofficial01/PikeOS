@@ -3,9 +3,30 @@ ASM=nasm
 SRC=src
 BUILD=build
 
-$(BUILD)/floppy.img: $(BUILD)/main.bin
-	cp $(BUILD)/main.bin $(BUILD)/floppy.img
-	truncate -s 1440k $(BUILD)/floppy.img
+.PHONY: all floppy kernel bootloader clean mkbuild
 
-$(BUILD)/main.bin: $(SRC)/main.asm
-	$(ASM) $(SRC)/main.asm -f bin -o $(BUILD)/main.bin
+# Floppy image
+floppy: $(BUILD)/floppy.img
+$(BUILD)/floppy.img: bootloader kernel
+	dd if=/dev/zero of=$(BUILD)/floppy.img bs=512 count=2880
+	mkfs.fat -F 12 -n "PikeOS" $(BUILD)/floppy.img
+	dd if=$(BUILD)/boot.bin of=$(BUILD)/floppy.img conv=notrunc
+	mcopy -i $(BUILD)/floppy.img $(BUILD)/kernel.bin "::kernel.bin"
+
+# Bootloader
+bootloader: $(BUILD)/boot.bin
+$(BUILD)/boot.bin: mkbuild
+	$(ASM) $(SRC)/bootloader/boot.asm -f bin -o $(BUILD)/boot.bin
+
+# Kernel
+kernel: $(BUILD)/kernel.bin
+$(BUILD)/kernel.bin: mkbuild
+	$(ASM) $(SRC)/kernel/kernel.asm -f bin -o $(BUILD)/kernel.bin
+
+# Make build directory
+mkbuild:
+	mkdir -p $(BUILD)
+
+# Clean build directory
+clean:
+	rm -rf $(BUILD)/*
