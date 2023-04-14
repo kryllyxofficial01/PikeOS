@@ -7,12 +7,13 @@ bits 16 ; Tells the assembler to emit 16-bit code
 start:
     jmp main
 
-; Print a string to the screen
+; Save the values of the to-be modified registers
 print_str:
-    ; Save the values of the to-be modified registers
     push si
     push ax
+    push bx
 
+; Print a string to the screen
 .loop:
     lodsb ; Load the next character
 
@@ -29,6 +30,7 @@ print_str:
 
 .done:
     ; Restore registers
+    pop bx
     pop ax
     pop si
 
@@ -59,4 +61,4 @@ msg: db 'Hello, world!', ENDL, 0
 
 ; BIOS stuff
 times 510-($-$$) db 0 ; Pad the program to create a 512 byte sector
-dw 055aah ; Signature that tells the BIOS this is an OS
+dw 0aa55h ; Signature that tells the BIOS this is an OS
