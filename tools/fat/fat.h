@@ -1,13 +1,9 @@
-#include <stdint.h>
-
 #define true 1
 #define false 0
 
-typedef uint8_t boolean;
-
 typedef struct {
     // FAT Headers
-    uint8_t jumpInstruction[3];
+    uint8_t bootJumpInstruction[3];
     uint8_t OEM_Identifier[8];
     uint16_t bytesPerSector;
     uint8_t sectorsPerCluster;
@@ -28,20 +24,22 @@ typedef struct {
     uint8_t signature;
     uint32_t volumeID;
     uint8_t volumeLabel[11];
-    uint8_t systemID;
+    uint8_t systemID[8];
+
 } __attribute__((packed)) BootSector;
 
-typedef struct {
+typedef struct
+{
     uint8_t name[11];
     uint8_t attributes;
     uint8_t _reserved;
-    uint8_t timeCreatedInTenths;
-    uint16_t timeCreated;
-    uint16_t dateCreated;
-    uint16_t dateAccessed;
-    uint16_t lowClusterBits; // First 16 bits of a cluster
-    uint16_t highClusterBits; // Last 16 bits a cluster
-    uint16_t timeModified;
-    uint16_t dateModified;
+    uint8_t createdTimeInTenths;
+    uint16_t creationTime;
+    uint16_t creationDate;
+    uint16_t accessedDate;
+    uint16_t highClusterBits;
+    uint16_t modifiedTime;
+    uint16_t modifiedDate;
+    uint16_t lowClusterBits;
     uint32_t size;
 } __attribute__((packed)) DirectoryEntry;
