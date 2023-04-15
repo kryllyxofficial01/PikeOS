@@ -1,11 +1,16 @@
-org 0x7c00 ; Tells the assembler where to load the code in memory
-bits 16 ; Tells the assembler to emit 16-bit code
+org 0x0
+bits 16
 
 ; Newline character
 %define ENDL 0x0d, 0x0a
 
 start:
-    jmp main
+    mov si, msg
+    call print_str
+
+.halt:
+    cli
+    hlt
 
 ; Save the values of the to-be modified registers
 print_str:
@@ -36,29 +41,4 @@ print_str:
 
     ret
 
-main:
-    mov ax, 0
-
-    ; Setup data segments
-    mov ds, ax
-    mov es, ax
-
-    ; Setup stack
-    mov ss, ax
-    mov sp, 0x7c00 ; Offset the stack to start before the code segment
-
-    ; Print a string
-    mov si, msg
-    call print_str
-
-    hlt
-
-.halt:
-    jmp .halt
-
-; Variables
 msg: db 'Hello, world!', ENDL, 0
-
-; BIOS stuff
-times 510-($-$$) db 0 ; Pad the program to create a 512 byte sector
-dw 0x0aa55 ; Signature that tells the BIOS this is an OS
