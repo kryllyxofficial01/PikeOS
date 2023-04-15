@@ -1,5 +1,7 @@
 ASM=nasm
 CC=gcc
+WCC=/usr/bin/watcom/binl/wcc
+LINKER=/usr/bin/watcom/binl/wlink
 
 SRC=src
 BUILD=build
