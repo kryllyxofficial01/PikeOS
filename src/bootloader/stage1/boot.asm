@@ -315,7 +315,7 @@ loading: db 'Loading...', ENDL, 0
 read_failed: db 'Failed to read from disk...', ENDL, 0
 kernel_not_found: db 'Could not find kernel', ENDL, 0
 
-kernel_file: db 'KERNEL  BIN'
+kernel_file: db 'STAGE2  BIN'
 kernel_cluster: dw 0
 
 KERNEL_SEGMENT equ 0x2000
