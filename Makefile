@@ -14,19 +14,21 @@ floppy: $(BUILD)/floppy.img
 $(BUILD)/floppy.img: bootloader kernel
 	dd if=/dev/zero of=$(BUILD)/floppy.img bs=512 count=2880
 	mkfs.fat -F 12 -n "PikeOS" $(BUILD)/floppy.img
-	dd if=$(BUILD)/boot.bin of=$(BUILD)/floppy.img conv=notrunc
-	mcopy -i $(BUILD)/floppy.img $(BUILD)/kernel.bin "::kernel.bin"
+	dd if=$(BUILD)/bootloader/boot.bin of=$(BUILD)/floppy.img conv=notrunc
+	mcopy -i $(BUILD)/floppy.img $(BUILD)/kernel/kernel.bin "::kernel.bin"
 	mcopy -i $(BUILD)/floppy.img $(TOOLS)/fat/test.txt "::test.txt"
 
 # Bootloader
-bootloader: $(BUILD)/boot.bin
-$(BUILD)/boot.bin: mkbuild
-	$(ASM) $(SRC)/bootloader/boot.asm -f bin -o $(BUILD)/boot.bin
+bootloader: $(BUILD)/bootloader/boot.bin
+$(BUILD)/bootloader/boot.bin: mkbuild
+	mkdir -p $(BUILD)/bootloader
+	$(ASM) $(SRC)/bootloader/boot.asm -f bin -o $(BUILD)/bootloader/boot.bin
 
 # Kernel
-kernel: $(BUILD)/kernel.bin
-$(BUILD)/kernel.bin: mkbuild
-	$(ASM) $(SRC)/kernel/kernel.asm -f bin -o $(BUILD)/kernel.bin
+kernel: $(BUILD)/kernel/kernel.bin
+$(BUILD)/kernel/kernel.bin: mkbuild
+	mkdir -p $(BUILD)/kernel
+	$(ASM) $(SRC)/kernel/kernel.asm -f bin -o $(BUILD)/kernel/kernel.bin
 
 # Tools
 FAT: $(BUILD)/tools/fat
