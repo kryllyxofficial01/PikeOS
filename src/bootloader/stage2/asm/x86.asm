@@ -2,8 +2,8 @@ bits 16
 
 section _TEXT class=CODE
 
-global _write_char
-_write_char:
+global _x86_write_char
+_x86_write_char:
     push bp
     mov bp, sp
     push bx
@@ -20,8 +20,8 @@ _write_char:
 
     ret
 
-global _div64_32
-_div64_32:
+global _x86_div
+_x86_div:
     push bp
     mov bp, sp
     push bx

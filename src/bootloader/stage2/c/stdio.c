@@ -10,7 +10,7 @@ int* printn(int* argp, int length, bool isSigned, int base);
 
 // Print a character
 void putc(char character) {
-    write_char(character, 0);
+    x86_write_char(character, 0);
 }
 
 // Print a string
@@ -208,7 +208,7 @@ int* printn(int* argp, int length, bool isSigned, int base) {
 
     do {
         uint32_t remainder;
-        div64_32(number, base, &number, &remainder);
+        x86_div(number, base, &number, &remainder);
         buffer[i++] = hexChars[remainder];
     } while (number > 0);
 
