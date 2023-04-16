@@ -2,7 +2,7 @@ ASM?=nasm
 WCC?=/usr/bin/watcom/binl/wcc
 LINKER?=/usr/bin/watcom/binl/wlink
 
-WCC_FLAGS?=-4 -d3 -s -wx -ms -zl -zq
+WCC_FLAGS?=-4 -d3 -s -wx -ms -zl -zq -za99
 ASM_FLAGS?=-f obj
 
 BUILD?=build

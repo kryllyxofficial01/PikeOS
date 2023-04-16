@@ -6,7 +6,8 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [
-                "_cdecl="
+                "_cdecl=",
+                "${default}"
             ],
             "compilerPath": "/usr/bin/watcom/binl/wcc",
             "cStandard": "c99",
@@ -20,7 +21,8 @@
                 "-wx",
                 "-ms",
                 "-zl",
-                "-zq"
+                "-zq",
+                "-za99"
             ]
         }
     ],
