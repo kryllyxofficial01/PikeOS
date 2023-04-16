@@ -2,6 +2,6 @@
 #include "std/io.h"
 
 void _cdecl cstart_(uint16_t bootDrive) {
-    puts("This is a test of the C code.");
+    printf("This is a %s of the %c code.", "test", 'C');
     for (;;);
 }
