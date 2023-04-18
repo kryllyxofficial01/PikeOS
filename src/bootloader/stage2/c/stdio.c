@@ -1,9 +1,7 @@
 #include "std/io.h"
 #include "std/int.h"
-#include "std/bool.h"
 #include "x86.h"
 
-typedef uint8_t bool;
 const char hexChars[] = "0123456789abcdef";
 
 int* printn(int* argp, int length, bool isSigned, int base);

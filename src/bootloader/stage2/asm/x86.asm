@@ -3,6 +3,12 @@ bits 16
 section _TEXT class=CODE
 
 global _x86_write_char
+global _x86_div
+global _x86_disk_reset
+global _x86_disk_read
+global _x86_get_drive_params
+global __U4D
+
 _x86_write_char:
     push bp
     mov bp, sp
@@ -20,7 +26,6 @@ _x86_write_char:
 
     ret
 
-global _x86_div
 _x86_div:
     push bp
     mov bp, sp
@@ -44,5 +49,133 @@ _x86_div:
     pop bx
     mov sp, bp
     pop bp
+
+    ret
+
+_x86_disk_reset:
+    push bp
+    mov bp, sp
+    push bx
+
+    mov ah, 0
+    mov dl, [bp+4]
+    stc
+
+    int 0x13
+
+    mov ax, 1
+    sbb ax, 0
+
+    pop bx
+    mov sp, bp
+    pop bp
+
+    ret
+
+_x86_disk_read:
+    push bp
+    mov bp, sp
+
+    push bx
+    push es
+
+    mov dl, [bp+4]
+
+    mov ch, [bp+6]
+    mov cl, [bp+7]
+    shl cl, 6
+
+    mov dh, [bp+8]
+
+    mov al, [bp+10]
+    and al, 0x3f
+    or cl, al
+
+    mov al, [bp+12]
+
+    mov bx, [bp+16]
+    mov es, bx
+    mov bx, [bp+14]
+
+    mov ah, 0x02
+    stc
+    int 0x13
+
+    mov ax, 1
+    sbb ax, 0
+
+    pop es
+    pop bx
+
+    mov sp, bp
+    pop bp
+
+    ret
+
+_x86_get_drive_params:
+    push bp
+    mov bp, sp
+
+    push bx
+    push es
+    push di
+    push si
+
+    mov ah, 0x08
+    mov dl, [bp+4]
+    mov di, 0
+    mov es, di
+
+    stc
+    int 0x13
+
+    mov ax, 1
+    sbb ax, 0
+
+    mov si, [bp+6]
+    mov [si], bl
+
+    mov bl, ch
+    mov bh, cl
+    shr bh, 6
+
+    mov si, [bp+8]
+    mov [si], bx
+
+    xor ch, ch
+    and cl, 0x3f
+    mov si, [bp+10]
+    mov [si], bx
+
+    mov cl, dh
+    mov si, [bp+12]
+    mov [si], bx
+
+    pop si
+    pop di
+    pop es
+    pop bx
+
+    mov sp, bp
+    pop bp
+
+    ret
+
+__U4D:
+    shl edx, 16
+    mov dx, ax
+    mov eax, edx
+    xor edx, edx
+
+    shl ecx, 16
+    mov cx, bx
+
+    div ecx
+    mov ebx, edx
+    mov ecx, edx
+    shr ecx, 16
+
+    mov edx, eax
+    shr edx, 16
 
     ret
