@@ -8,6 +8,7 @@ global _x86_disk_reset
 global _x86_disk_read
 global _x86_get_drive_params
 global __U4D
+global __U4M
 
 _x86_write_char:
     push bp
@@ -55,18 +56,16 @@ _x86_div:
 _x86_disk_reset:
     push bp
     mov bp, sp
-    push bx
 
     mov ah, 0
     mov dl, [bp+4]
-    stc
 
+    stc
     int 0x13
 
     mov ax, 1
     sbb ax, 0
 
-    pop bx
     mov sp, bp
     pop bp
 
@@ -85,11 +84,11 @@ _x86_disk_read:
     mov cl, [bp+7]
     shl cl, 6
 
-    mov dh, [bp+8]
-
-    mov al, [bp+10]
+    mov al, [bp+8]
     and al, 0x3f
     or cl, al
+
+    mov dh, [bp+10]
 
     mov al, [bp+12]
 
@@ -116,13 +115,13 @@ _x86_get_drive_params:
     push bp
     mov bp, sp
 
-    push bx
     push es
-    push di
+    push bx
     push si
+    push di
 
-    mov ah, 0x08
     mov dl, [bp+4]
+    mov ah, 0x08
     mov di, 0
     mov es, di
 
@@ -138,7 +137,6 @@ _x86_get_drive_params:
     mov bl, ch
     mov bh, cl
     shr bh, 6
-
     mov si, [bp+8]
     mov [si], bx
 
@@ -151,10 +149,10 @@ _x86_get_drive_params:
     mov si, [bp+12]
     mov [si], bx
 
-    pop si
     pop di
-    pop es
+    pop si
     pop bx
+    pop es
 
     mov sp, bp
     pop bp
@@ -175,6 +173,20 @@ __U4D:
     mov ecx, edx
     shr ecx, 16
 
+    mov edx, eax
+    shr edx, 16
+
+    ret
+
+__U4M:
+    shl edx, 16
+    mov dx, ax
+    mov eax, edx
+
+    shl ecx, 16
+    mov cx, bx
+
+    mul ecx
     mov edx, eax
     shr edx, 16
 

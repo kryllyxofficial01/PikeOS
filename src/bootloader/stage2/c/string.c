@@ -1,7 +1,7 @@
 #include "std/string.h"
 #include "std/memory.h"
 
-const char* find_char(const char* string, char character) {
+const char* strchr(const char* string, char character) {
     if (string == NULL) {
         return NULL;
     }

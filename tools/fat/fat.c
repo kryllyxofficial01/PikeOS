@@ -64,7 +64,7 @@ bool readFile(DirectoryEntry* fileEntry, FILE* disk, uint8_t* buffer) {
     return success;
 }
 
-DirectoryEntry* findFile(const char* name) {
+DirectoryEntry* find_file(const char* name) {
     for (uint32_t i = 0; i < bootSector.dirEntries; i++) {
         if (memcmp(name, rootDirectory[i].name, 11) == 0) {
             return &rootDirectory[i];
@@ -104,7 +104,7 @@ int main(int argc, char const* argv[]) {
         return -4;
     }
 
-    DirectoryEntry* fileEntry = findFile(argv[2]);
+    DirectoryEntry* fileEntry = find_file(argv[2]);
     if (!fileEntry) {
         fprintf(stderr, "Could not find file %s!\n", argv[2]);
         free(FAT);

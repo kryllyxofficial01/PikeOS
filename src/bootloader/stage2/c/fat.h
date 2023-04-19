@@ -70,7 +70,7 @@ enum Attributes {
 };
 
 typedef struct {
-    File publicData;
+    File public;
     bool opened;
     uint32_t currentCluster;
     uint32_t currentClusterSector;
@@ -90,6 +90,6 @@ typedef struct {
 
 bool FAT_init(Disk* disk);
 File far* open_file(Disk* disk, const char* path);
-void close_file(File far* file);
 uint32_t read_file(Disk* disk, File far* file, uint32_t bytes, void* buffer);
-bool readEntry(Disk* disk, File far* file, DirectoryEntry entry);
+bool readEntry(Disk* disk, File far* file, DirectoryEntry* entry);
+void close_file(File far* file);

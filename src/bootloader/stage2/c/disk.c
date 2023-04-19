@@ -4,8 +4,8 @@
 
 void LBA_to_CHS(Disk* disk, uint32_t LBA, uint16_t* cylinder, uint16_t* sector, uint16_t* head) {
     *sector = LBA % disk->sectors + 1;
-    *cylinder = (LBA / disk->heads) / disk->heads;
-    *head = (LBA / disk->heads) % disk->heads;
+    *cylinder = (LBA / disk->sectors) / disk->heads;
+    *head = (LBA / disk->sectors) % disk->heads;
 }
 
 bool disk_init(Disk* disk, uint8_t driveNumber) {
@@ -28,7 +28,7 @@ bool disk_readSectors(Disk* disk, uint32_t LBA, uint8_t sectors, uint8_t far* bu
     uint16_t cylinder, sector, head;
     LBA_to_CHS(disk, LBA, &cylinder, &sector, &head);
 
-    for (int i = 0; i< 3; i++) {
+    for (int i = 0; i < 3; i++) {
         if (x86_disk_read(disk->ID, cylinder, sector, head, sectors, buffer)) {
             return true;
         }
