@@ -149,29 +149,106 @@ File far* open_entry(Disk* disk, DirectoryEntry* entry) {
     return &file->public;
 }
 
+uint32_t nextCluster(uint32_t currentCluster) {
+    uint32_t FAT_index = currentCluster * 3 / 2;
+
+    if (currentCluster % 2 == 0) {
+        return (*(uint16_t far*) (FAT + FAT_index)) & 0x0fff;
+    }
+    else {
+        return (*(uint16_t far*) (FAT + FAT_index)) >> 4;
+    }
+}
+
+uint32_t read_file(Disk* disk, File far* file, uint32_t bytes, void* buffer) {
+    FileData far* fileData = (file->handle == ROOT_DIRECTORY_HANDLE)
+        ? &data->rootDirectory
+        : &data->openedFiles[file->handle];
+
+    uint8_t* dataBuffer = (uint8_t*) buffer;
+
+    if (!fileData->public.isDirectory) {
+        bytes = min(bytes, fileData->public.size - fileData->public.position);
+    }
+
+    while (bytes > 0) {
+        uint32_t leftInBuffer = SECTOR_SIZE - (fileData->public.position % SECTOR_SIZE);
+        uint32_t allocated = min(bytes, leftInBuffer);
+
+        memcpy(dataBuffer, fileData->buffer + fileData->public.position % SECTOR_SIZE, allocated);
+        dataBuffer += allocated;
+        fileData->public.position += allocated;
+        bytes -= allocated;
+
+        if (leftInBuffer == allocated) {
+            if (fileData->public.handle == ROOT_DIRECTORY_HANDLE) {
+                fileData->currentCluster++;
+
+                if (!disk_readSectors(disk, fileData->currentCluster, 1, fileData->buffer)) {
+                    printf("Error: Failed to read sectors\r\n");
+                    break;
+                }
+            }
+            else {
+                if (++fileData->currentSectorInCluster >= data->boot_sector.bootSector.sectorsPerCluster) {
+                    fileData->currentSectorInCluster = 0;
+                    fileData->currentCluster = nextCluster(fileData->currentCluster);
+                }
+
+                if (fileData->currentCluster >= 0xff8) {
+                    fileData->public.size = fileData->public.position;
+                    break;
+                }
+
+                if (!disk_readSectors(disk, clusterToLBA(fileData->currentCluster) + fileData->currentSectorInCluster, 1, fileData->buffer)) {
+                    printf("Error: Failed to read sectors\r\n");
+                    break;
+                }
+            }
+        }
+    }
+
+    return dataBuffer - (uint8_t*) buffer;
+}
+
+bool read_entry(Disk* disk, File far* file, DirectoryEntry* entry) {
+    return read_file(disk, file, sizeof(DirectoryEntry), entry) == sizeof(DirectoryEntry);
+}
+
+void close_file(File far* file) {
+    if (file->handle == ROOT_DIRECTORY_HANDLE) {
+        file->position = 0;
+        data->rootDirectory.currentCluster = data->rootDirectory.firstCluster;
+    }
+    else {
+        data->openedFiles[file->handle].opened = false;
+    }
+}
+
 bool find_file(Disk* disk, File far* file, const char* name, DirectoryEntry* entry) {
     DirectoryEntry _entry;
-    char FAT_filename[11];
+    char FAT_name[12];
 
-    memset(FAT_filename, ' ', sizeof(FAT_filename));
+    memset(FAT_name, ' ', sizeof(FAT_name));
+    FAT_name[11] = '\0';
 
-    const char* extension = strchr(FAT_filename, '.');
+    const char* extension = strchr(name, '.');
     if (extension == NULL) {
         extension = name + 11;
     }
 
-    for (int i = 0; i < 8 && name + i < extension; i++) {
-        FAT_filename[i] = upper(name[i]);
+    for (int i = 0; i < 8 && name[i] && name + i < extension; i++) {
+        FAT_name[i] = upper(name[i]);
     }
 
     if (extension != NULL) {
-        for (int i = 0; i < 3 && extension[i]; i++) {
-            FAT_filename[i+8] = extension[i];
+        for (int i = 0; i < 3 && extension[i + 1]; i++) {
+            FAT_name[i + 8] = upper(extension[i + 1]);
         }
     }
 
-    while(readEntry(disk, file, &_entry)) {
-        if (memcmp(FAT_filename, entry->name, 11)) {
+    while (read_entry(disk, file, &_entry)) {
+        if (memcmp(FAT_name, _entry.name, 11) == 0) {
             *entry = _entry;
             return true;
         }
@@ -187,110 +264,41 @@ File far* open_file(Disk* disk, const char* path) {
         path++;
     }
 
-    File far* file = &data->rootDirectory.public;
+    File far* current = &data->rootDirectory.public;
 
-    bool isLast;
     while (*path) {
-        const char* delimiter = strchr(path, '/');
-        isLast = false;
-
-        if (delimiter != NULL) {
-            memcpy(path, name, delimiter-path);
-            name[delimiter - path + 1] = '\0';
-            path = delimiter + 1;
+        bool isLast = false;
+        const char* delim = strchr(path, '/');
+        if (delim != NULL) {
+            memcpy(path, name, delim - path);
+            name[delim - path + 1] = '\0';
+            path = delim + 1;
         }
         else {
             unsigned length = len(path);
             memcpy(path, name, length);
-            name[length] = '\0';
-            isLast = true;
-
+            name[length + 1] = '\0';
             path += length;
+            isLast = true;
         }
 
         DirectoryEntry entry;
-        if (find_file(disk, file, name, &entry)) {
-            close_file(file);
+        if (find_file(disk, current, name, &entry)) {
+            close_file(current);
 
-            if (!isLast && entry.attributes & DIRECTORY != 0) {
-                printf("Error: '%s' is not a directory\r\n", name);
+            if (!isLast && entry.attributes & DIRECTORY == 0) {
+                printf("Error: '%s' not a directory\r\n", name);
                 return NULL;
             }
 
-            file = open_entry(disk, &entry);
+            current = open_entry(disk, &entry);
         }
         else {
-            close_file(file);
+            close_file(current);
             printf("Error: Could not find '%s'\r\n", name);
             return NULL;
         }
     }
 
-    return file;
-}
-
-uint32_t read_file(Disk* disk, File far* file, uint32_t bytes, void* buffer) {
-    FileData far* fileData = file->handle == ROOT_DIRECTORY_HANDLE ? &data->rootDirectory : &data->openedFiles[file->handle];
-    uint8_t* dataBuffer = (uint8_t*) buffer;
-    bytes = min(bytes, fileData->public.size - fileData->public.position);
-
-    while (bytes > 0) {
-        uint32_t leftInBuffer = SECTOR_SIZE - (fileData->public.position % SECTOR_SIZE);
-        uint32_t allocated = min(bytes, leftInBuffer);
-
-        memcpy(fileData->buffer, dataBuffer + (fileData->public.position % SECTOR_SIZE), allocated);
-        dataBuffer += allocated;
-        fileData->public.position += allocated;
-        bytes -= allocated;
-
-        if (bytes > 0) {
-            if (fileData->public.handle == ROOT_DIRECTORY_HANDLE) {
-                fileData->currentCluster++;
-
-                if (!disk_readSectors(disk, fileData->currentCluster, 1, fileData->buffer)) {
-                    printf("Error: Could not read from sectors\r\n");
-                    break;
-                }
-            }
-            else {
-                if (++fileData->currentSectorInCluster >= data->boot_sector.bootSector.sectorsPerCluster) {
-                    fileData->currentSectorInCluster = 0;
-
-                    uint32_t FAT_index = fileData->currentCluster * 3 / 2;
-                    if (fileData->currentCluster % 2 == 0) {
-                        fileData->currentCluster = (*(uint16_t*)(FAT + FAT_index)) & 0x0fff;
-                    }
-                    else {
-                        fileData->currentCluster = (*(uint16_t*)(FAT + FAT_index)) >> 4;
-                    }
-                }
-
-                if (fileData->currentCluster >= 0xff8) {
-                    printf("Error: Unable to read next cluster\r\n");
-                    break;
-                }
-
-                if (!disk_readSectors(disk, clusterToLBA(fileData->currentCluster) + fileData->currentSectorInCluster, 1, fileData->buffer)) {
-                    printf("Error: Could not read from sectors\r\n");
-                    break;
-                }
-            }
-        }
-    }
-
-    return dataBuffer - (uint8_t*) buffer;
-}
-
-bool readEntry(Disk* disk, File far* file, DirectoryEntry* entry) {
-    return read_file(disk, file, sizeof(DirectoryEntry), entry) == sizeof(DirectoryEntry);
-}
-
-void close_file(File far* file) {
-    if (file->handle == ROOT_DIRECTORY_HANDLE) {
-        file->position = 0;
-        data->rootDirectory.currentCluster = data->rootDirectory.firstCluster;
-    }
-    else {
-        data->openedFiles[file->handle].opened = false;
-    }
+    return current;
 }

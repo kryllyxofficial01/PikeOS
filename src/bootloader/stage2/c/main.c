@@ -22,7 +22,7 @@ void _cdecl cstart_(uint16_t bootDrive) {
     File far* file = open_file(&disk, "/");
     DirectoryEntry entry;
 
-    while (readEntry(&disk, file, &entry)) {
+    while (read_entry(&disk, file, &entry)) {
         printf(" ");
         for (int i = 0; i < 11; i++) {
             putc(entry.name[i]);

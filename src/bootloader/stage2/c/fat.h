@@ -46,5 +46,5 @@ enum Attributes {
 bool FAT_init(Disk* disk);
 File far* open_file(Disk* disk, const char* path);
 uint32_t read_file(Disk* disk, File far* file, uint32_t bytes, void* buffer);
-bool readEntry(Disk* disk, File far* file, DirectoryEntry* entry);
+bool read_entry(Disk* disk, File far* file, DirectoryEntry* entry);
 void close_file(File far* file);
