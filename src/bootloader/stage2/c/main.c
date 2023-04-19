@@ -3,12 +3,16 @@
 #include "disk.h"
 #include "fat.h"
 
+void far* data = (void far*)0x00500200;
+
 void _cdecl cstart_(uint16_t bootDrive) {
     Disk disk;
     if(!disk_init(&disk, bootDrive)) {
         printf("Disk initiation failed...\r\n");
         goto end;
     }
+
+    disk_readSectors(&disk, 19, 1, data);
 
     if (!FAT_init(&disk)) {
         printf("Failed to initiate FAT system...\r\n");

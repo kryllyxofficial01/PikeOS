@@ -2,8 +2,55 @@
 #include "std/string.h"
 #include "std/memory.h"
 #include "std/ctype.h"
+#include "std/utility.h"
+
 #include "fat.h"
 #include "disk.h"
+
+#pragma pack(push, 1)
+typedef struct {
+    uint8_t bootJumpInstruction[3];
+    uint8_t OEM_Identifier[8];
+    uint16_t bytesPerSector;
+    uint8_t sectorsPerCluster;
+    uint16_t reservedSectors;
+    uint8_t FAT_Count;
+    uint16_t dirEntries;
+    uint16_t sectors;
+    uint8_t mediaDescriptorType;
+    uint16_t sectorsPerFAT;
+    uint16_t sectorsPerTrack;
+    uint16_t heads;
+    uint32_t hiddenSectors;
+    uint32_t largeSectors;
+
+    uint8_t driveNumber;
+    uint8_t _reserved;
+    uint8_t signature;
+    uint32_t volumeID;
+    uint8_t volumeLabel[11];
+    uint8_t systemID[8];
+} BootSector;
+#pragma pack(pop)
+
+typedef struct {
+    uint8_t buffer[SECTOR_SIZE];
+    File public;
+    bool opened;
+    uint32_t firstCluster;
+    uint32_t currentCluster;
+    uint32_t currentSectorInCluster;
+} FileData;
+
+typedef struct {
+    union {
+        BootSector bootSector;
+        uint8_t bytes[SECTOR_SIZE];
+    } boot_sector;
+
+    FileData rootDirectory;
+    FileData openedFiles[MAX_FILE_HANDLES];
+} Data;
 
 static Data far* data;
 static uint8_t far* FAT = NULL;
@@ -18,6 +65,88 @@ bool readFAT(Disk* disk) {
         disk, data->boot_sector.bootSector.reservedSectors,
         data->boot_sector.bootSector.sectorsPerFAT, FAT
     );
+}
+
+bool FAT_init(Disk* disk) {
+    data = (Data far*) FAT_MEMORY_ADDRESS;
+
+    if (!readBootSector(disk)) {
+        printf("Error: Failed to read from boot sector\r\n");
+        return false;
+    }
+
+    FAT = (uint8_t far*) data + sizeof(Data);
+    uint32_t FAT_size = data->boot_sector.bootSector.bytesPerSector * data->boot_sector.bootSector.sectorsPerFAT;
+    if (sizeof(Data) + FAT_size >= FAT_MEMORY_SIZE) {
+        printf("Error: Not enough memory for FAT system\nNeed %lu, but found only %lu\r\n", sizeof(Data) + FAT_size, FAT_MEMORY_SIZE);
+        return false;
+    }
+
+    if (!readFAT(disk)) {
+        printf("Error: Failed to read from FAT\r\n");
+        return false;
+    }
+
+    uint32_t rootDirectoryLBA = data->boot_sector.bootSector.reservedSectors + data->boot_sector.bootSector.sectorsPerFAT * data->boot_sector.bootSector.FAT_Count;
+    uint32_t rootDirectorySize = sizeof(DirectoryEntry) * data->boot_sector.bootSector.dirEntries;
+
+    data->rootDirectory.public.handle = ROOT_DIRECTORY_HANDLE;
+    data->rootDirectory.public.isDirectory = true;
+    data->rootDirectory.public.position = 0;
+    data->rootDirectory.public.size = sizeof(DirectoryEntry) * data->boot_sector.bootSector.dirEntries;
+    data->rootDirectory.opened = true;
+    data->rootDirectory.firstCluster = rootDirectoryLBA;
+    data->rootDirectory.currentCluster = rootDirectoryLBA;
+    data->rootDirectory.currentSectorInCluster = 0;
+
+    if (!disk_readSectors(disk, rootDirectoryLBA, 1, data->rootDirectory.buffer)) {
+        printf("Error: Failed to read from root directory\r\n");
+        return false;
+    }
+
+    uint32_t rootDirectorySectors = (rootDirectorySize + data->boot_sector.bootSector.bytesPerSector - 1) / data->boot_sector.bootSector.bytesPerSector;
+    dataLBA = rootDirectoryLBA + rootDirectorySectors;
+
+    for (int i = 0; i < MAX_FILE_HANDLES; i++) {
+        data->openedFiles[i].opened = false;
+    }
+
+    return true;
+}
+
+uint32_t clusterToLBA(uint32_t cluster) {
+    return dataLBA + (cluster-2) * data->boot_sector.bootSector.sectorsPerCluster;
+}
+
+File far* open_entry(Disk* disk, DirectoryEntry* entry) {
+    int handle = -1;
+    for (int i = 0; i < MAX_FILE_HANDLES && handle < 0; i++) {
+        if (!data->openedFiles[i].opened) {
+            handle = i;
+        }
+    }
+
+    if (handle < 0) {
+        printf("Error: Out of file handles\r\n");
+        return false;
+    }
+
+    FileData far* file = &data->openedFiles[handle];
+    file->public.handle = handle;
+    file->public.isDirectory = (entry->attributes & DIRECTORY) != 0;
+    file->public.position = 0;
+    file->public.size = entry->size;
+    file->firstCluster = entry->lowClusterBits + ((uint32_t) entry->highClusterBits << 16);
+    file->currentCluster = file->firstCluster;
+    file->currentSectorInCluster = 0;
+
+    if (!disk_readSectors(disk, clusterToLBA(file->currentCluster), 1, file->buffer)) {
+        printf("Error: Failed to read from sectors\r\n");
+        return false;
+    }
+
+    file->opened = true;
+    return &file->public;
 }
 
 bool find_file(Disk* disk, File far* file, const char* name, DirectoryEntry* entry) {
@@ -49,90 +178,6 @@ bool find_file(Disk* disk, File far* file, const char* name, DirectoryEntry* ent
     }
 
     return false;
-}
-
-bool FAT_init(Disk* disk) {
-    data = (Data far*) FAT_MEMORY_ADDRESS;
-
-    if (!readBootSector(disk)) {
-        printf("Error: Failed to read boot sector\r\n");
-        return false;
-    }
-
-    FAT = (uint8_t far*) data + sizeof(Data);
-    uint32_t FAT_size = data->boot_sector.bootSector.bytesPerSector * data->boot_sector.bootSector.sectorsPerFAT;
-
-    if (FAT_size + sizeof(Data) >= FAT_MEMORY_SIZE) {
-        printf("Error: Not enough memory for FAT\r\nNeed %lu, found only %lu\r\n", FAT_size, FAT_MEMORY_SIZE);
-        return false;
-    }
-
-    if (!readFAT(disk)) {
-        printf("Error: Unable to read FAT\r\n");
-        return false;
-    }
-
-    uint32_t rootDirectoryLBA = data->boot_sector.bootSector.reservedSectors + data->boot_sector.bootSector.sectorsPerFAT * data->boot_sector.bootSector.FAT_Count;
-    uint32_t rootDirectorySize = sizeof(DirectoryEntry) + data->boot_sector.bootSector.dirEntries;
-
-    data->rootDirectory.public.handle = ROOT_DIRECTORY_HANDLE;
-    data->rootDirectory.public.isDirectory = true;
-    data->rootDirectory.public.position = 0;
-    data->rootDirectory.public.size = sizeof(DirectoryEntry) + data->boot_sector.bootSector.dirEntries;
-    data->rootDirectory.opened = true;
-    data->rootDirectory.firstCluster = rootDirectoryLBA;
-    data->rootDirectory.currentCluster = data->rootDirectory.firstCluster = rootDirectoryLBA;;
-    data->rootDirectory.currentClusterSector = 0;
-
-    if (!disk_readSectors(disk, rootDirectoryLBA, 1, data->rootDirectory.buffer)) {
-        printf("Error: Unable to read from the root directory\r\n");
-        return false;
-    }
-
-    uint32_t rootDirectorySectors = (rootDirectorySize + data->boot_sector.bootSector.bytesPerSector - 1);
-    rootDirectorySectors /= data->boot_sector.bootSector.bytesPerSector;
-    dataLBA = rootDirectoryLBA + rootDirectorySectors;
-
-    for (int i = 0; i < MAX_FILE_HANDLES; i++) {
-        data->openedFiles[i].opened = true;
-    }
-
-    return true;
-}
-
-uint32_t clusterToLBA(uint32_t cluster) {
-    return dataLBA + (cluster-2) * data->boot_sector.bootSector.sectorsPerCluster;
-}
-
-File far* open_entry(Disk* disk, DirectoryEntry* entry) {
-    int handle = -1;
-    for (int i = 0; i < MAX_FILE_HANDLES && handle < 0; i++) {
-        if (!data->openedFiles[i].opened) {
-            handle = i;
-        }
-    }
-
-    if (handle < 0) {
-        printf("Error: Out of file handles\r\n");
-        return false;
-    }
-
-    FileData far* file = &data->openedFiles[handle];
-    file->public.handle = handle;
-    file->public.isDirectory = entry->attributes & DIRECTORY != 0;
-    file->public.position = 0;
-    file->public.size = 0;
-    file->firstCluster = entry->lowClusterBits + ((uint32_t) entry->highClusterBits << 16);
-    file->currentCluster = file->firstCluster;
-    file->currentClusterSector = 0;
-
-    if (!disk_readSectors(disk, clusterToLBA(file->currentCluster), 1, file->buffer)) {
-        printf("Error: Unable to read sector\r\n");
-        return false;
-    }
-
-    file->opened = true;
-    return &file->public;
 }
 
 File far* open_file(Disk* disk, const char* path) {
@@ -208,8 +253,8 @@ uint32_t read_file(Disk* disk, File far* file, uint32_t bytes, void* buffer) {
                 }
             }
             else {
-                if (++fileData->currentClusterSector >= data->boot_sector.bootSector.sectorsPerCluster) {
-                    fileData->currentClusterSector = 0;
+                if (++fileData->currentSectorInCluster >= data->boot_sector.bootSector.sectorsPerCluster) {
+                    fileData->currentSectorInCluster = 0;
 
                     uint32_t FAT_index = fileData->currentCluster * 3 / 2;
                     if (fileData->currentCluster % 2 == 0) {
@@ -225,7 +270,7 @@ uint32_t read_file(Disk* disk, File far* file, uint32_t bytes, void* buffer) {
                     break;
                 }
 
-                if (!disk_readSectors(disk, clusterToLBA(fileData->currentCluster) + fileData->currentClusterSector, 1, fileData->buffer)) {
+                if (!disk_readSectors(disk, clusterToLBA(fileData->currentCluster) + fileData->currentSectorInCluster, 1, fileData->buffer)) {
                     printf("Error: Could not read from sectors\r\n");
                     break;
                 }
