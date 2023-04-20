@@ -7,9 +7,9 @@ SRC=src
 BUILD=build
 TOOLS=tools
 
-.PHONY: all floppy kernel bootloader clean mkbuild FAT
+.PHONY: all floppy kernel bootloader clean mkbuild
 
-all: floppy FAT
+all: floppy
 
 # Floppy image
 floppy: $(BUILD)/floppy.img
@@ -41,10 +41,10 @@ $(BUILD)/kernel/kernel.bin: mkbuild
 	$(MAKE) -C $(SRC)/kernel BUILD=$(abspath $(BUILD))
 
 # Tools
-FAT: $(BUILD)/tools/fat
-$(BUILD)/tools/fat: mkbuild $(TOOLS)/fat/fat.c
-	mkdir -p $(BUILD)/tools
-	$(CC) -g $(TOOLS)/fat/fat.c -o $(BUILD)/tools/fat
+# FAT: $(BUILD)/tools/fat
+# $(BUILD)/tools/fat: mkbuild $(TOOLS)/fat/fat.c
+#	mkdir -p $(BUILD)/tools
+#	$(CC) -g $(TOOLS)/fat/fat.c -o $(BUILD)/tools/fat
 
 # Make build directory
 mkbuild:

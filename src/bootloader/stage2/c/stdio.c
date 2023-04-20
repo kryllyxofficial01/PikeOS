@@ -53,7 +53,7 @@ void printf(const char* string, ...) {
                         break;
 
                     case 'l':
-                        length = PRINTF_SHORT_LENGTH;
+                        length = PRINTF_LONG_LENGTH;
                         state = PRINTF_LONG_LENGTH_STATE;
                         break;
 

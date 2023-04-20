@@ -70,6 +70,8 @@ bool readFAT(Disk* disk) {
 bool FAT_init(Disk* disk) {
     data = (Data far*) FAT_MEMORY_ADDRESS;
 
+    printf("%lx\r\n", data);
+
     if (!readBootSector(disk)) {
         printf("Error: Failed to read from boot sector\r\n");
         return false;
@@ -264,15 +266,15 @@ File far* open_file(Disk* disk, const char* path) {
         path++;
     }
 
-    File far* current = &data->rootDirectory.public;
+    File far* file = &data->rootDirectory.public;
 
     while (*path) {
         bool isLast = false;
-        const char* delim = strchr(path, '/');
-        if (delim != NULL) {
-            memcpy(path, name, delim - path);
-            name[delim - path + 1] = '\0';
-            path = delim + 1;
+        const char* delimiter = strchr(path, '/');
+        if (delimiter != NULL) {
+            memcpy(path, name, delimiter - path);
+            name[delimiter - path + 1] = '\0';
+            path = delimiter + 1;
         }
         else {
             unsigned length = len(path);
@@ -283,22 +285,22 @@ File far* open_file(Disk* disk, const char* path) {
         }
 
         DirectoryEntry entry;
-        if (find_file(disk, current, name, &entry)) {
-            close_file(current);
+        if (find_file(disk, file, name, &entry)) {
+            close_file(file);
 
             if (!isLast && entry.attributes & DIRECTORY == 0) {
                 printf("Error: '%s' not a directory\r\n", name);
                 return NULL;
             }
 
-            current = open_entry(disk, &entry);
+            file = open_entry(disk, &entry);
         }
         else {
-            close_file(current);
+            close_file(file);
             printf("Error: Could not find '%s'\r\n", name);
             return NULL;
         }
     }
 
-    return current;
+    return file;
 }
