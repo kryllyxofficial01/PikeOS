@@ -1,5 +1,4 @@
 #include "std/string.h"
-#include "std/memory.h"
 
 const char* strchr(const char* string, char character) {
     if (string == NULL) {
@@ -11,40 +10,40 @@ const char* strchr(const char* string, char character) {
             return string;
         }
 
-        string++;
+        ++string;
     }
 
     return NULL;
 }
 
-char* copy(const char* source, char* destination) {
+char* strcpy(char* destination, const char* source) {
     char* _destination = destination;
+
+    if (destination == NULL) {
+        return NULL;
+    }
 
     if (source == NULL) {
         *destination = '\0';
         return destination;
     }
 
-    if (destination == NULL) {
-        return NULL;
-    }
-
     while (*source) {
         *destination = *source;
-        source++;
-        destination++;
+        ++source;
+        ++destination;
     }
 
     *destination = '\0';
     return _destination;
 }
 
-int len(const char* string) {
+unsigned strlen(const char* string) {
     unsigned length = 0;
 
     while (*string) {
-        length++;
-        string++;
+        ++length;
+        ++string;
     }
 
     return length;

@@ -3,11 +3,6 @@
 #include "std/int.h"
 #include "disk.h"
 
-#define SECTOR_SIZE 512
-#define MAX_FILE_HANDLES 10
-#define ROOT_DIRECTORY_HANDLE -1
-#define MAX_PATH_LENGTH 256
-
 #pragma pack(push, 1)
 typedef struct {
     uint8_t name[11];
@@ -30,17 +25,16 @@ typedef struct {
     bool isDirectory;
     uint32_t position;
     uint32_t size;
-
 } File;
 
 enum Attributes {
-    READ_ONLY = 0x01,
-    HIDDEN = 0x02,
+    IS_READ_ONLY = 0x01,
+    IS_HIDDEN = 0x02,
     SYSTEM = 0x04,
     VOLUME_ID = 0x08,
-    DIRECTORY = 0x10,
+    IS_DIRECTORY = 0x10,
     ARCHIVE = 0x20,
-    FLAGS = READ_ONLY | HIDDEN | SYSTEM | VOLUME_ID
+    FLAGS = IS_READ_ONLY | IS_HIDDEN | SYSTEM | VOLUME_ID
 };
 
 bool FAT_init(Disk* disk);

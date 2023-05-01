@@ -1,4 +1,3 @@
-#include "std/int.h"
 #include "std/utility.h"
 
 uint32_t align(uint32_t number, uint32_t alignment) {

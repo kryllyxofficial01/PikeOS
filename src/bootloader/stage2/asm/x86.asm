@@ -2,31 +2,45 @@ bits 16
 
 section _TEXT class=CODE
 
-global _x86_write_char
-global _x86_div
-global _x86_disk_reset
 global _x86_disk_read
 global _x86_get_drive_params
+
 global __U4D
-global __U4M
+__U4D:
+    shl edx, 16
+    mov dx, ax
+    mov eax, edx
+    xor edx, edx
 
-_x86_write_char:
-    push bp
-    mov bp, sp
-    push bx
+    shl ecx, 16
+    mov cx, bx
 
-    mov ah, 0x0e
-    mov al, [bp+4]
-    mov bh, [bp+6]
+    div ecx
+    mov ebx, edx
+    mov ecx, edx
+    shr ecx, 16
 
-    int 0x10
-
-    pop bx
-    mov sp, bp
-    pop bp
+    mov edx, eax
+    shr edx, 16
 
     ret
 
+global __U4M
+__U4M:
+    shl edx, 16
+    mov dx, ax
+    mov eax, edx
+
+    shl ecx, 16
+    mov cx, bx
+
+    mul ecx
+    mov edx, eax
+    shr edx, 16
+
+    ret
+
+global _x86_div
 _x86_div:
     push bp
     mov bp, sp
@@ -53,6 +67,25 @@ _x86_div:
 
     ret
 
+global _x86_write_char
+_x86_write_char:
+    push bp
+    mov bp, sp
+    push bx
+
+    mov ah, 0x0e
+    mov al, [bp+4]
+    mov bh, [bp+6]
+
+    int 0x10
+
+    pop bx
+    mov sp, bp
+    pop bp
+
+    ret
+
+global _x86_disk_reset
 _x86_disk_reset:
     push bp
     mov bp, sp
@@ -71,6 +104,7 @@ _x86_disk_reset:
 
     ret
 
+global _x86_disk_read
 _x86_disk_read:
     push bp
     mov bp, sp
@@ -111,6 +145,7 @@ _x86_disk_read:
 
     ret
 
+global _x86_get_drive_params
 _x86_get_drive_params:
     push bp
     mov bp, sp
@@ -156,38 +191,5 @@ _x86_get_drive_params:
 
     mov sp, bp
     pop bp
-
-    ret
-
-__U4D:
-    shl edx, 16
-    mov dx, ax
-    mov eax, edx
-    xor edx, edx
-
-    shl ecx, 16
-    mov cx, bx
-
-    div ecx
-    mov ebx, edx
-    mov ecx, edx
-    shr ecx, 16
-
-    mov edx, eax
-    shr edx, 16
-
-    ret
-
-__U4M:
-    shl edx, 16
-    mov dx, ax
-    mov eax, edx
-
-    shl ecx, 16
-    mov cx, bx
-
-    mul ecx
-    mov edx, eax
-    shr edx, 16
 
     ret

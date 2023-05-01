@@ -1,36 +1,35 @@
-#include "std/int.h"
 #include "std/memory.h"
 
-void far* memcpy(const void far* source, void far* destination, uint16_t length) {
+void far* memcpy(void far* destination, const void far* source, uint16_t size) {
     uint8_t far* _destination = (uint8_t far*) destination;
     const uint8_t far* _source = (const uint8_t far*) source;
 
-    for (uint16_t i = 0; i < length; i++) {
+    for (uint16_t i = 0; i < size; i++) {
         _destination[i] = _source[i];
     }
 
     return destination;
 }
 
-void far* memset(void far* pointer, int value, uint16_t size) {
-    uint8_t far* _pointer = (uint8_t far*) pointer;
+void far* memset(void far* ptr, int value, uint16_t size) {
+    uint8_t far* _ptr = (uint8_t far*) ptr;
 
     for (uint16_t i = 0; i < size; i++) {
-        _pointer[i] = value;
+        _ptr[i] = value;
     }
 
-    return pointer;
+    return ptr;
 }
 
-bool memcmp(const void far* pointer1, const void far* pointer2, uint16_t length) {
-    const uint8_t far* _pointer1 = (const uint8_t far*) pointer1;
-    const uint8_t far* _pointer2 = (const uint8_t far*) pointer2;
+int memcmp(const void far* ptrA, const void far* ptrB, uint16_t size) {
+    const uint8_t far* _ptrA = (const uint8_t far*) ptrA;
+    const uint8_t far* _ptrB = (const uint8_t far*) ptrB;
 
-    for (uint16_t i = 0; i < length; i++) {
-        if (_pointer1[i] != _pointer2[i]) {
-            return true;
+    for (uint16_t i = 0; i < size; i++) {
+        if (_ptrA[i] != _ptrB[i]) {
+            return 1;
         }
     }
 
-    return false;
+    return 0;
 }

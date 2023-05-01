@@ -1,13 +1,14 @@
-#include "std/int.h"
 #include "disk.h"
 #include "x86.h"
+#include "std/io.h"
 
 bool disk_init(Disk* disk, uint8_t driveNumber) {
     uint8_t driveType;
     uint16_t cylinders, sectors, heads;
 
-    if (!x86_get_drive_params(disk->ID, &driveType, &cylinders, &sectors, &heads))
+    if (!x86_get_drive_params(disk->ID, &driveType, &cylinders, &sectors, &heads)) {
         return false;
+    }
 
     disk->ID = driveNumber;
     disk->cylinders = cylinders + 1;
@@ -30,8 +31,9 @@ bool disk_readSectors(Disk* disk, uint32_t LBA, uint8_t sectors, uint8_t far* bu
 
     for (int i = 0; i < 3; i++)
     {
-        if (x86_disk_read(disk->ID, cylinder, sector, head, sectors, buffer))
+        if (x86_disk_read(disk->ID, cylinder, sector, head, sectors, buffer)) {
             return true;
+        }
 
         x86_disk_reset(disk->ID);
     }

@@ -26,7 +26,7 @@ large_sectors: dd 0
 drive_number: db 0
 db 0 ; Reserved byte
 signature: db 0x29
-volumeID: db 0x78, 0x56, 0x34, 0x12
+volumeID: db 0x12, 0x34, 0x56, 0x78
 volume_label: db "PIKE     OS" ; Contents are irrelevant, just needs to be 11 bytes
 systemID: db "FAT12   "
 
@@ -73,7 +73,7 @@ start:
     add ax, [reserved_sectors]
     push ax
 
-    mov ax, [sectors_per_FAT]
+    mov ax, [dir_entries]
     shl ax, 5
     xor dx, dx
     div word [bytes_per_sector]
@@ -313,7 +313,7 @@ disk_reset:
 
 loading: db 'Loading...', ENDL, 0
 read_failed: db 'Failed to read from disk...', ENDL, 0
-kernel_not_found: db 'Could not find kernel', ENDL, 0
+kernel_not_found: db 'Could not find kernel...', ENDL, 0
 
 kernel_file: db 'STAGE2  BIN'
 kernel_cluster: dw 0

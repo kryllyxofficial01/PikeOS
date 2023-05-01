@@ -1,17 +1,14 @@
 #include "std/io.h"
-#include "std/int.h"
 #include "x86.h"
 
 const char hexChars[] = "0123456789abcdef";
 
 int* printn(int* argp, int length, bool isSigned, int base);
 
-// Print a character
 void putc(char character) {
     x86_write_char(character, 0);
 }
 
-// Print a string
 void puts(const char* string) {
     while (*string) {
         putc(*string);
@@ -19,15 +16,14 @@ void puts(const char* string) {
     }
 }
 
-// Print a formatted string
-void printf(const char* string, ...) {
+void _cdecl printf(const char* string, ...) {
     int state = PRINTF_NORMAL_STATE;
     int length = PRINTF_DEFAULT_LENGTH;
 
     int base = 10;
     bool isSigned = false;
 
-    int* argp = (int*) &string; // Points to the current argument
+    int* argp = (int*) &string;
     argp++;
 
     while (*string) {
@@ -145,7 +141,6 @@ void printf(const char* string, ...) {
     }
 }
 
-// Print a number
 int* printn(int* argp, int length, bool isSigned, int base) {
     char buffer[32];
     unsigned long long number;
