@@ -40,14 +40,103 @@ main:
 	mov ss, ax
 	mov sp, 0x7c00
 
+	mov [_ebr_drive_number], dl
+	
+	mov ax, 1
+	mov cl, 1
+	mov bx, 0x7e00
+	call disk_read
+
 	; Print a string
 	mov si, msg
 	call puts
 
+	cli
 	hlt
 
-.halt:
-	jmp .halt
+; Read from the disk
+disk_read:
+	push ax
+	push bx
+	push cx
+	push dx
+	push di
+
+	push cx
+	call lba_to_chs
+	pop ax
+
+	mov ah, 0x02
+	mov di, 3
+
+; Try the read operation three times
+.loop:
+	pusha
+	stc
+
+	int 0x13
+	jnc .done
+	
+	popa
+	call disk_reset
+
+	; Check if all three retries have expired
+	dec di
+	test di, di
+	jnz .loop
+
+.fail:
+	jmp floppy_error
+
+.done:
+	popa
+
+	pop di
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+
+	ret
+
+disk_reset:
+	pusha
+
+	mov ah, 0
+	stc
+	int 0x13
+
+	jc floppy_error
+
+	popa
+	ret
+
+; Convert an LBA address to a CHS address
+lba_to_chs:
+	push ax
+	push dx
+
+	; Get the sector
+	xor dx, dx
+	div word [_bpb_sectors_per_track]
+	inc dx
+	mov cx, dx
+
+	; Get the cylinder and head
+	xor dx, dx
+	div word [_bpb_heads]
+
+	; Move results into respective output registers
+	mov dh, dl
+	mov ch, al
+	shl ah, 6
+	or cl, ah
+
+	pop ax
+	mov dl, al
+	pop ax
+
+	ret
 
 ; Print a string to the screen
 puts:
@@ -76,7 +165,21 @@ puts:
 
 	ret
 
+floppy_error:
+	mov si, read_failed
+	call puts
+
+wait_to_reboot:
+	mov ah, 0
+	int 0x16
+	jmp 0x0ffff:0
+
+.halt:
+	cli
+	hlt
+
 msg: db "this is a test", endl, 0
+read_failed: db "failed to read from floppy", endl, 0
 
 times 510-($-$$) db 0
 dw 0xaa55
