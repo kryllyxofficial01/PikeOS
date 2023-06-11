@@ -56,3 +56,6 @@ build/
 
 # wlink Error Files
 *.err
+
+# Vscode Configs
+.vscode
