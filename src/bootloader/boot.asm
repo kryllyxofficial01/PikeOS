@@ -12,7 +12,7 @@ _bpb_bytes_per_sector: dw 512
 _bpb_sectors_per_cluster: db 1
 _bpb_reserved_sectors: dw 1
 _bpb_FAT_count: db 2
-_bpb_dir_entries_count: dw 0x0e0
+_bpb_dir_entry_count: dw 0x0e0
 _bpb_total_sectors: dw 2880
 _bpb_media_descriptor_type: db 0x0f0
 _bpb_sectors_per_FAT: dw 9
