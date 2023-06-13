@@ -1,27 +1,16 @@
-org 0x7c00 ; The starting location of the operating system
-bits 16 ; Tells the assembler to emit 16-bit code
+org 0x0
+bits 16
 
 %define endl 0x0d, 0x0a
 
 main:
-	mov ax, 0
-
-	; Setup data segments
-	mov ds, ax
-	mov es, ax
-
-	; Setup the stack
-	mov ss, ax
-	mov sp, 0x7c00
-
 	; Print a string
 	mov si, msg
 	call puts
 
-	hlt
-
 .halt:
-	jmp .halt
+	cli
+	hlt
 
 ; Print a string to the screen
 puts:
@@ -51,6 +40,3 @@ puts:
 	ret
 
 msg: db "this is a test", endl, 0
-
-times 510-($-$$) db 0
-dw 0xaa55
